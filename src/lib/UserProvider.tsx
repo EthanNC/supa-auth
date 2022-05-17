@@ -1,69 +1,201 @@
-import { User } from '@supabase/gotrue-js'
+import { Provider, User, UserCredentials } from '@supabase/gotrue-js'
 import { useRouter } from 'next/router'
 import * as React from 'react'
 import { supabase } from './supabase'
 
-const Context = React.createContext<Partial<UserContextProps>>({})
-
+interface Profile extends User {
+  username?: string
+}
 interface UserContextProps {
-  user: User | undefined
-  login: () => void
-  logout: () => void
-  signup: (email: string, password: string) => void
+  user?: Profile
+  loading: boolean
+  error?: any
+  login: (provider: Provider | UserCredentials) => Promise<void>
+  logout: () => Promise<void>
+  signup: (email: string, password: string) => Promise<void>
+  forgotPassword: (email: string) => Promise<void>
+  resetPassword: (password: string) => Promise<void>
 }
 
 interface ProviderProps {
   children: React.ReactNode
 }
 
+const Context = React.createContext<UserContextProps>({} as UserContextProps)
+
 const UserProvider = ({ children }: ProviderProps) => {
   const router = useRouter()
-  const [user, setUser] = React.useState<User | undefined>(
-    supabase.auth.user() || undefined
-  )
+  const [user, setUser] = React.useState<Profile>()
+  const [error, setError] = React.useState<any>()
+  const [loading, setLoading] = React.useState<boolean>(false)
+
+  React.useEffect(() => {
+    if (error) setError(null)
+  }, [router.pathname])
 
   React.useEffect(() => {
     const getUserProfile = async () => {
       const sessionUser = supabase.auth.user()
-
       if (sessionUser) {
-        const { data: profile } = await supabase
-          .from('profile')
-          .select('*')
-          .eq('id', sessionUser.id)
-          .single()
+        setLoading(true)
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', sessionUser.id)
+            .single()
 
-        setUser({
-          ...sessionUser,
-          ...profile,
-        })
+          if (error) {
+            throw error
+          }
+          setUser({
+            ...sessionUser,
+            ...profile,
+          })
+        } catch (error) {
+          setError(error)
+        } finally {
+          setLoading(false)
+        }
       }
     }
     getUserProfile()
     supabase.auth.onAuthStateChange(() => {
-      getUserProfile
+      getUserProfile()
     })
   }, [])
 
-  const login = async () => {
-    await supabase.auth.signIn({ provider: 'twitter' })
-    router.push('/')
+  React.useEffect(() => {
+    fetch('/api/auth/set', {
+      method: 'POST',
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        event: user ? 'SIGNED_IN' : 'SIGNED_OUT',
+        session: supabase.auth.session(),
+      }),
+    })
+  }, [user])
+
+  const login = async (provider: Provider | UserCredentials) => {
+    setLoading(true)
+    try {
+      if (typeof provider === 'string') {
+        const { user, error } = await supabase.auth.signIn({
+          provider: provider as Provider,
+        })
+        if (error) {
+          throw error
+        }
+
+        if (user) {
+          setUser(user)
+          router.push('/')
+        }
+      } else {
+        const { user, error } = await supabase.auth.signIn({ ...provider })
+
+        if (error) {
+          throw error
+        }
+        if (user) {
+          setUser(user)
+          router.push('/')
+        }
+      }
+    } catch (error) {
+      setError(error)
+    } finally {
+      setLoading(false)
+    }
   }
   const logout = async () => {
     await supabase.auth.signOut()
+    await fetch('/api/auth/remove', {
+      method: 'GET',
+    })
     setUser(undefined)
     router.push('/')
   }
 
   const signup = async (email: string, password: string) => {
-    const { user } = await supabase.auth.signUp({ email, password })
-    router.push('/')
+    setLoading(true)
+    try {
+      const { user, error } = await supabase.auth.signUp({ email, password })
+
+      if (error) {
+        throw error
+      }
+
+      if (user) {
+        setUser(user)
+        router.push('/email-verification')
+      }
+    } catch (error) {
+      setError(error)
+    } finally {
+      setLoading(false)
+    }
   }
-  return (
-    <Context.Provider value={{ user, login, logout, signup }}>
-      {children}
-    </Context.Provider>
+
+  const forgotPassword = async (email: string) => {
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.api.resetPasswordForEmail(email)
+
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      setError(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  const resetPassword = async (password: string) => {
+    const session = supabase.auth.session()
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.api.updateUser(
+        String(session?.access_token),
+        {
+          password,
+        }
+      )
+
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      setError(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Make the provider update only when it should.
+  // We only want to force re-renders if the user,
+  // loading or error states change.
+  //
+  // Whenever the `value` passed into a provider changes,
+  // the whole tree under the provider re-renders, and
+  // that can be very costly! Even in this case, where
+  // you only get re-renders when logging in and out
+  // we want to keep things very performant.
+  const memoedValue = React.useMemo(
+    () => ({
+      user,
+      loading,
+      error,
+      login,
+      signup,
+      logout,
+      forgotPassword,
+      resetPassword,
+    }),
+    [user, loading, error]
   )
+
+  return <Context.Provider value={memoedValue}>{children}</Context.Provider>
 }
 
 export const useUser = () => React.useContext(Context)

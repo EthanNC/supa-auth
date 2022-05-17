@@ -1,25 +1,20 @@
-import type { NextFetchEvent, NextRequest } from 'next/server'
-import { supabase } from '../../lib/supabase'
-import { NextResponse } from 'next/server'
+import { NextFetchEvent, NextRequest, NextResponse } from 'next/server'
 
 export async function middleware(req: NextRequest, ev: NextFetchEvent) {
   //The line below isn't working as expected, see README.tx
-  let authResult = await supabase.auth.api.getUserByCookie(req)
-  //   let authResult = await getUser(req)
+  //let authResult = await supabase.auth.api.getUserByCookie(req)
+
+  let authResult = await getUser(req)
 
   if (authResult.error) {
     console.log(
       'Authorization error, redirecting to login page',
       authResult.error
     )
-    return NextResponse.redirect(
-      `/?ret=${encodeURIComponent(req.nextUrl.pathname)}`
-    )
+    return NextResponse.redirect(new URL('/', req.url))
   } else if (!authResult.user) {
     console.log('No auth user, redirecting')
-    return NextResponse.redirect(
-      `/?ret=${encodeURIComponent(req.nextUrl.pathname)}`
-    )
+    return NextResponse.redirect(new URL('/', req.url))
   } else {
     console.log('User is found', authResult.user)
     return NextResponse.next()
@@ -27,7 +22,7 @@ export async function middleware(req: NextRequest, ev: NextFetchEvent) {
 }
 
 async function getUser(req: NextRequest): Promise<any> {
-  let token = req.cookies['sb:token']
+  let token = req.cookies['sb-access-token']
   if (!token) {
     return {
       user: null,

@@ -1,78 +1,96 @@
-import { useState } from 'react'
+import Link from 'next/link'
+import React from 'react'
+import { SubmitHandler, useForm } from 'react-hook-form'
+import { supabase } from '~/lib/supabase'
 import { useUser } from '~/lib/UserProvider'
+import Button from './Button'
+import Input from './Input'
 
 export default function Profile() {
   const { user, logout } = useUser()
-  const [username, setUsername] = useState(null)
-  // useEffect(() => {
-  //   getProfile();
-  // }, [session]);
+  const [error, setError] = React.useState<any>(null)
 
-  // async function getProfile() {
-  //   try {
-  //     const user = supabase.auth.user();
-  //     let { data, error, status } = await supabase
-  //       .from('profiles')
-  //       .select(`username`)
-  //       .eq('id', user.id)
-  //       .single();
+  type ProfileInputs = {
+    username: string
+  }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ProfileInputs>()
 
-  //     if (error && status !== 406) {
-  //       throw error;
-  //     }
+  const onSubmit: SubmitHandler<ProfileInputs> = async (data) => {
+    try {
+      const user = supabase.auth.user()
+      const updates = {
+        id: user?.id,
+        username: data.username,
+        updated_at: new Date(),
+      }
 
-  //     if (data) {
-  //       setUsername(data.username);
-  //     }
-  //   } catch (error) {
-  //     alert(error.message);
-  //   }
-  // }
-
-  // async function updateProfile() {
-  //   try {
-  //     const user = supabase.auth.user();
-  //     const updates = {
-  //       id: user.id,
-  //       username,
-  //       updated_at: new Date(),
-  //     };
-
-  //     let { error } = await supabase.from('profiles').upsert(updates);
-  //     if (error) {
-  //       throw error;
-  //     }
-  //   } catch (error) {
-  //     alert(error.message);
-  //   }
-  //}
+      let { error } = await supabase.from('profiles').upsert(updates)
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      setError(error)
+    }
+  }
 
   return (
     <div className="container mx-auto grid min-h-screen place-content-center">
-      <p>Oh hi there {user?.email}</p>
-      <input
-        className="my-4 w-full rounded-xl border-2 border-gray-500 p-4"
-        type="username"
-        placeholder="Enter a username blaajspsd'pkdp"
-        // value={username}
-        // onChange={(e) => setUsername(e.target.value)}
-      />
-      <button
-        onClick={(e) => {
-          e.preventDefault()
-          //   updateProfile()
-        }}
-        className="mt-4 w-full rounded-lg border-blue-300 bg-blue-500 p-2 pl-5 pr-5 text-lg text-gray-100 focus:border-4"
-      >
-        <span>Update profile</span>
-      </button>
+      <p>
+        Oh hi there{' '}
+        <span className="font-bold">{user?.username || user?.email}</span>
+      </p>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {error && (
+          <span className="round rounded bg-red-500 p-2 text-sm text-white">
+            {error.message}
+          </span>
+        )}
+        <Input
+          type="username"
+          placeholder="Enter a username"
+          {...register('username', {
+            required: true,
+            pattern: /^[a-zA-Z0-9_-]*$/,
+            minLength: 3,
+          })}
+        />
+        {errors.username && (
+          <span className="round rounded bg-red-500 py-1 px-2 text-sm text-white">
+            {usernameErrorMessageForType(errors.username.type)}
+          </span>
+        )}
+        <Button type="submit">
+          <span>Update profile</span>
+        </Button>
+      </form>
       <p className="mt-4 text-center">or</p>
-      <button
+      <Link href="/reset-password-form" passHref>
+        <Button className="mt-4 rounded-lg border-blue-300 bg-blue-500 p-2 pl-5 pr-5 text-lg text-gray-100 focus:border-4">
+          Change Password
+        </Button>
+      </Link>
+      <p className="mt-4 text-center">or</p>
+      <Button
         className="mt-4 rounded-lg border-blue-300 bg-blue-500 p-2 pl-5 pr-5 text-lg text-gray-100 focus:border-4"
         onClick={logout}
       >
         Logout
-      </button>
+      </Button>
     </div>
   )
+}
+
+export const usernameErrorMessageForType = (type: string) => {
+  switch (type) {
+    case 'required':
+      return 'username is required'
+    case 'minLength':
+      return 'username must be 3 characters or more'
+    default:
+      return 'Please enter a valid username!'
+  }
 }

@@ -1,24 +1,24 @@
 import { NextPage } from 'next'
-import jwt from 'jsonwebtoken'
+import { GetServerSidePropsContext } from 'next'
+import { supabase } from '~/lib/supabase'
 
-const Hidden: NextPage<{ user: any }> = (props) => {
-  return <h1>Do not tell anybody about this page, {props.user.email}</h1>
+const Hidden: NextPage = (props) => {
+  return <h1>Do not tell anybody about this page,</h1>
 }
 
-export async function getServerSideProps(context: {
-  req: { cookies: { [x: string]: any } }
-}) {
-  let supabaseToken = context.req.cookies['sb:token']
-  if (!supabaseToken) {
-    throw new Error(
-      'It should not happen! Since this page is guarded by _middleware.ts, the presence of supabase token cookie (sb:token) should be already checked'
-    )
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  //this check is not necessary because of middleware
+  const { user } = await supabase.auth.api.getUserByCookie(context.req)
+  if (!user) {
+    return {
+      redirect: {
+        permant: false,
+        destination: '/',
+      },
+    }
   }
   return {
-    props: {
-      //we do not need to verify JWT signature since it has been already done in _middlware.ts
-      user: jwt.decode(supabaseToken),
-    },
+    props: {},
   }
 }
 

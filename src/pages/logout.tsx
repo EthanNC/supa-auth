@@ -4,6 +4,6 @@ import { useUser } from '~/lib/UserProvider'
 export default function LogoutPage() {
   const { logout } = useUser()
   //   @ts-ignore
-  React.useEffect(logout, [])
+  React.useEffect(logout, [logout])
   return <div>Logging Out</div>
 }
