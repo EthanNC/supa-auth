@@ -85,9 +85,7 @@ const UserProvider = ({ children }: ProviderProps) => {
             provider: provider as Provider,
           },
           {
-            redirectTo:
-              String(process.env.NODE_ENV === 'development') &&
-              'http://localhost:3000',
+            redirectTo: process.env.NEXT_PUBLIC_VERCEL_URL,
           }
         )
         if (error) {
@@ -102,9 +100,7 @@ const UserProvider = ({ children }: ProviderProps) => {
         const { user, error } = await supabase.auth.signIn(
           { ...provider },
           {
-            redirectTo:
-              String(process.env.NODE_ENV === 'development') &&
-              'http://localhost:3000',
+            redirectTo: process.env.NEXT_PUBLIC_VERCEL_URL,
           }
         )
 
