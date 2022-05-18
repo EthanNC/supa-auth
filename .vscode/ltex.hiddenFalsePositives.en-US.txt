@@ -1,0 +1,1 @@
+{"rule":"MORFOLOGIK_RULE_EN_US","sentence":"^\\QGetting started\nCreate a project on Supabase.\\E$"}

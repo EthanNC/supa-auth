@@ -80,9 +80,16 @@ const UserProvider = ({ children }: ProviderProps) => {
     setLoading(true)
     try {
       if (typeof provider === 'string') {
-        const { user, error } = await supabase.auth.signIn({
-          provider: provider as Provider,
-        })
+        const { user, error } = await supabase.auth.signIn(
+          {
+            provider: provider as Provider,
+          },
+          {
+            redirectTo:
+              String(process.env.NODE_ENV === 'development') &&
+              'http://localhost:3000',
+          }
+        )
         if (error) {
           throw error
         }
@@ -92,7 +99,14 @@ const UserProvider = ({ children }: ProviderProps) => {
           router.push('/')
         }
       } else {
-        const { user, error } = await supabase.auth.signIn({ ...provider })
+        const { user, error } = await supabase.auth.signIn(
+          { ...provider },
+          {
+            redirectTo:
+              String(process.env.NODE_ENV === 'development') &&
+              'http://localhost:3000',
+          }
+        )
 
         if (error) {
           throw error
