@@ -11,15 +11,12 @@
     "@supabase/gotrue-js": "^1.22.14",
     "@supabase/supabase-js": "^1.35.2",
     "clsx": "^1.1.1",
-    "jsonwebtoken": "^8.5.1",
     "next": "latest",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
-    "react-hook-form": "^7.31.1",
-    "react-hot-toast": "^2.2.0"
+    "react-hook-form": "^7.31.1"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^8.5.8",
     "@types/node": "17.0.4",
     "@types/react": "17.0.38",
     "autoprefixer": "^10.4.0",

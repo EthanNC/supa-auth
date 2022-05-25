@@ -4,6 +4,7 @@ import * as React from 'react'
 import { supabase } from './supabase'
 
 interface Profile extends User {
+  avatar_url?: string
   username?: string
 }
 interface UserContextProps {
@@ -15,6 +16,7 @@ interface UserContextProps {
   signup: (email: string, password: string) => Promise<void>
   forgotPassword: (email: string) => Promise<void>
   resetPassword: (password: string) => Promise<void>
+  updateProfile: (profile: any) => Promise<void>
 }
 
 interface ProviderProps {
@@ -182,6 +184,21 @@ const UserProvider = ({ children }: ProviderProps) => {
     }
   }
 
+  const updateProfile = async (profile: any) => {
+    const session = supabase.auth.session()
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(profile)
+        .eq('id', session?.user?.id)
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      setError(error)
+    }
+  }
+
   // Make the provider update only when it should.
   // We only want to force re-renders if the user,
   // loading or error states change.
@@ -201,7 +218,9 @@ const UserProvider = ({ children }: ProviderProps) => {
       logout,
       forgotPassword,
       resetPassword,
+      updateProfile,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user, loading, error]
   )
 

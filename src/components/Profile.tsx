@@ -1,3 +1,5 @@
+import { UserIcon } from '@heroicons/react/outline'
+import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
@@ -7,8 +9,12 @@ import Button from './Button'
 import Input from './Input'
 
 export default function Profile() {
-  const { user, logout } = useUser()
+  const { user, logout, updateProfile } = useUser()
   const [error, setError] = React.useState<any>(null)
+  const [uploading, setUploading] = React.useState<boolean>(false)
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null | undefined>(
+    user?.avatar_url
+  )
 
   type ProfileInputs = {
     username: string
@@ -19,31 +25,97 @@ export default function Profile() {
     formState: { errors },
   } = useForm<ProfileInputs>()
 
-  const onSubmit: SubmitHandler<ProfileInputs> = async (data) => {
+  async function downloadImage(path: string) {
     try {
-      const user = supabase.auth.user()
-      const updates = {
-        id: user?.id,
-        username: data.username,
-        updated_at: new Date(),
-      }
-
-      let { error } = await supabase.from('profiles').upsert(updates)
+      const { publicURL, error } = await supabase.storage
+        .from('avatars')
+        .getPublicUrl(path)
       if (error) {
         throw error
       }
+      return publicURL
     } catch (error) {
       setError(error)
     }
   }
 
+  async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+    try {
+      setUploading(true)
+
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('You must select an image to upload.')
+      }
+
+      const file = event.target.files[0]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random()}.${fileExt}`
+      const filePath = `${fileName}`
+
+      let { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      const url = await downloadImage(filePath)
+      setAvatarUrl(url)
+      await updateProfile({ avatar_url: url, updated_at: new Date() })
+    } catch (error) {
+      setError(error)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const onSubmit: SubmitHandler<ProfileInputs> = async (data) => {
+    const user = supabase.auth.user()
+    const updates = {
+      id: user?.id,
+      username: data.username,
+      updated_at: new Date(),
+    }
+    updateProfile(updates)
+  }
+
   return (
     <div className="container mx-auto grid min-h-screen place-content-center">
-      <p>
-        Oh hi there{' '}
-        <span className="font-bold">{user?.username || user?.email}</span>
-      </p>
       <form onSubmit={handleSubmit(onSubmit)}>
+        {/* //#region  //*=========== guide =========== */}
+        <div className=" flex items-center justify-evenly">
+          {!avatarUrl && <UserIcon className="h-24 rounded bg-gray-200" />}
+          {user?.avatar_url && (
+            <Image
+              width={150}
+              height={150}
+              src={avatarUrl as string}
+              alt="avatar"
+            />
+          )}
+
+          <label
+            className="mt-4 w-fit cursor-pointer rounded-lg border-gray-300 bg-blue-500 p-2 pl-5 pr-5 text-lg text-gray-100 focus:border-4"
+            htmlFor="single"
+          >
+            {uploading ? 'Uploading ...' : 'Edit Avatar'}
+          </label>
+          <input
+            className="absolute hidden"
+            type="file"
+            id="single"
+            accept="image/*"
+            onChange={uploadAvatar}
+            disabled={uploading}
+          />
+        </div>
+
+        {/* //#endregion  //*======== guide =========== */}
+        <p>
+          Oh hi there{' '}
+          <span className="font-bold">{user?.username || user?.email}</span>
+        </p>
         {error && (
           <span className="round rounded bg-red-500 p-2 text-sm text-white">
             {error.message}
