@@ -16,7 +16,7 @@ interface UserContextProps {
   signup: (email: string, password: string) => Promise<void>
   forgotPassword: (email: string) => Promise<void>
   resetPassword: (password: string) => Promise<void>
-  updateProfile: (profile: any) => Promise<void>
+  updateProfile: (profile: Partial<Profile>) => Promise<void>
 }
 
 interface ProviderProps {
@@ -184,7 +184,7 @@ const UserProvider = ({ children }: ProviderProps) => {
     }
   }
 
-  const updateProfile = async (profile: any) => {
+  const updateProfile = async (profile: Partial<Profile>) => {
     const session = supabase.auth.session()
     try {
       const { error } = await supabase

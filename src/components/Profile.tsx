@@ -62,7 +62,10 @@ export default function Profile() {
 
       const url = await downloadImage(filePath)
       setAvatarUrl(url)
-      await updateProfile({ avatar_url: url, updated_at: new Date() })
+      await updateProfile({
+        avatar_url: url as string,
+        updated_at: new Date().toString(),
+      })
     } catch (error) {
       setError(error)
     } finally {
@@ -75,7 +78,7 @@ export default function Profile() {
     const updates = {
       id: user?.id,
       username: data.username,
-      updated_at: new Date(),
+      updated_at: new Date().toString(),
     }
     updateProfile(updates)
   }
