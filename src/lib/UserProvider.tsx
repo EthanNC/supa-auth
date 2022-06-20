@@ -132,7 +132,12 @@ const UserProvider = ({ children }: ProviderProps) => {
   const signup = async (email: string, password: string) => {
     setLoading(true)
     try {
-      const { user, error } = await supabase.auth.signUp({ email, password })
+      const { user, error } = await supabase.auth.signUp(
+        { email, password },
+        {
+          redirectTo: process.env.NEXT_PUBLIC_VERCEL_URL,
+        }
+      )
 
       if (error) {
         throw error
@@ -152,7 +157,9 @@ const UserProvider = ({ children }: ProviderProps) => {
   const forgotPassword = async (email: string) => {
     setLoading(true)
     try {
-      const { error } = await supabase.auth.api.resetPasswordForEmail(email)
+      const { error } = await supabase.auth.api.resetPasswordForEmail(email, {
+        redirectTo: process.env.NEXT_PUBLIC_VERCEL_URL,
+      })
 
       if (error) {
         throw error
